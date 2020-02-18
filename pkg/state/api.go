@@ -5,6 +5,7 @@ import (
 	"runtime"
 
 	"github.com/wavesplatform/gowaves/pkg/crypto"
+	"github.com/wavesplatform/gowaves/pkg/importer"
 	"github.com/wavesplatform/gowaves/pkg/keyvalue"
 	"github.com/wavesplatform/gowaves/pkg/libs/ntptime"
 	"github.com/wavesplatform/gowaves/pkg/proto"
@@ -55,7 +56,7 @@ type StateInfo interface {
 	// WavesAddressesNumber returns total number of Waves addresses in state.
 	// It is extremely slow, so it is recommended to only use for testing purposes.
 	WavesAddressesNumber() (uint64, error)
-
+	AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, error)
 	// Get cumulative blocks score at given height.
 	ScoreAtHeight(height proto.Height) (*big.Int, error)
 	// Get current blockchain score (at top height).

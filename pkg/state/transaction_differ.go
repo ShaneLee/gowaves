@@ -127,7 +127,7 @@ func (diff *balanceDiff) applyToAssetBalance(balance uint64) (uint64, error) {
 		return 0, errors.Errorf("failed to add balance and min balance diff: %v\n", err)
 	}
 	if minBalance < 0 {
-		return 0, errors.New("negative intermediate asset balance")
+		return 0, errors.Errorf("negative intermediate asset balance (block '%s', asset '%s', balance %d)", diff.blockID.String(), "", minBalance)
 	}
 	// Chech main balance diff.
 	newBalance, err := util.AddInt64(diff.balance, int64(balance))

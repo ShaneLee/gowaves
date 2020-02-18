@@ -3,10 +3,12 @@ package importer
 import (
 	"encoding/binary"
 	"encoding/json"
+	"math/big"
 	"os"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/wavesplatform/gowaves/pkg/crypto"
 	"github.com/wavesplatform/gowaves/pkg/proto"
 	"go.uber.org/zap"
 )
@@ -24,10 +26,17 @@ const (
 	MaxBlockSize                    = 2 * MiB
 )
 
+type Diff struct {
+	Quantity *big.Int
+	Total    *big.Int
+	Diff     *big.Int
+}
+
 type State interface {
 	AddNewBlocks(blocks [][]byte) error
 	AddOldBlocks(blocks [][]byte) error
 	WavesAddressesNumber() (uint64, error)
+	AssetBalancesDiffs() (map[crypto.Digest]Diff, error)
 	AccountBalance(account proto.Recipient, asset []byte) (uint64, error)
 }
 
@@ -159,6 +168,17 @@ func CheckBalances(st State, balancesPath string) error {
 	}
 	if err := balances.Close(); err != nil {
 		return errors.Errorf("failed to close balances file: %v", err)
+	}
+	return nil
+}
+
+func CheckAssetBalances(st State) error {
+	diffs, err := st.AssetBalancesDiffs()
+	if err != nil {
+		return errors.Wrap(err, "check assets balances")
+	}
+	for k, v := range diffs {
+		zap.S().Infof("Asset error: %s: %d", k.String(), v)
 	}
 	return nil
 }

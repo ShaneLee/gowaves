@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 
+	"github.com/mr-tron/base58/base58"
 	"github.com/pkg/errors"
 )
 
@@ -52,7 +53,7 @@ func (a *diffApplier) applyAssetBalanceChanges(change *balanceChanges, filter, v
 	for _, diff := range change.balanceDiffs {
 		newBalance, err := diff.applyToAssetBalance(balance)
 		if err != nil {
-			return errors.Errorf("validation failed: negative asset balance: %v\n", err)
+			return errors.Wrapf(err, "validation failed: negative asset (ID '%s') balance", base58.Encode(k.asset))
 		}
 		if validateOnly {
 			continue

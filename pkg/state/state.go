@@ -15,6 +15,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"github.com/wavesplatform/gowaves/pkg/consensus"
 	"github.com/wavesplatform/gowaves/pkg/crypto"
+	"github.com/wavesplatform/gowaves/pkg/importer"
 	"github.com/wavesplatform/gowaves/pkg/keyvalue"
 	"github.com/wavesplatform/gowaves/pkg/proto"
 	"github.com/wavesplatform/gowaves/pkg/settings"
@@ -675,6 +676,39 @@ func (s *stateManager) WavesAddressesNumber() (uint64, error) {
 		return 0, wrapErr(RetrievalError, err)
 	}
 	return res, nil
+}
+
+func (s *stateManager) AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, error) {
+	zap.S().Info("Collecting assets balances...")
+	balances, err := s.stor.balances.assetsBalances()
+	if err != nil {
+		return nil, err
+	}
+	zap.S().Info("Checking assets balances...")
+	c := 0
+	diffs := make(map[crypto.Digest]importer.Diff)
+	for a, balance := range balances {
+		info, err := s.stor.assets.assetInfo(a, true)
+		if err != nil {
+			return nil, err
+		}
+		quantity := info.quantity
+		if quantity.CmpAbs(balance) != 0 {
+			d := big.NewInt(0)
+			d.Sub(&quantity, balance)
+			zap.S().Infof("Balance error: asset '%s', quantity %s - balance %s = diff %s", a.String(), quantity.String(), balance.String(), d.String())
+			diffs[a] = importer.Diff{
+				Quantity: &quantity,
+				Total:    balance,
+				Diff:     d,
+			}
+		}
+		c++
+		if c%10000 == 0 {
+			zap.S().Infof("%d assets checked", c)
+		}
+	}
+	return diffs, nil
 }
 
 func (s *stateManager) topBlock() (*proto.Block, error) {

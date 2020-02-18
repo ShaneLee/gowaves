@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mr-tron/base58/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wavesplatform/gowaves/pkg/crypto"
 	g "github.com/wavesplatform/gowaves/pkg/grpc/generated"
 	"github.com/wavesplatform/gowaves/pkg/proto"
 	"google.golang.org/grpc"
@@ -86,32 +88,38 @@ func TestBlocksAPIClient(t *testing.T) {
 }
 
 func TestAccountData(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	conn := connect(t)
 	defer conn.Close()
 
 	c := g.NewAccountsApiClient(conn)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*time.Second))
 	defer cancel()
-	addr, err := proto.NewAddressFromString("3MxHxW5VWq4KrWcbhFfxKrafXm4mL6rZHfj")
+	addr, err := proto.NewAddressFromString("3NCzApG3ka4tvDuKX8HxnJtXe7eJw5PmdVt")
 	require.NoError(t, err)
-	b := make([]byte, len(addr.Bytes()))
-	copy(b, addr.Bytes())
-	req := &g.DataRequest{Address: b /*, Key: "13QuhSAkAueic5ncc8YRwyNxGQ6tRwVSS44a7uFgWsnk"*/}
-	dc, err := c.GetDataEntries(ctx, req)
+	b, err := addr.Body()
 	require.NoError(t, err)
-	var msg g.DataEntryResponse
-	for err = dc.RecvMsg(&msg); err == nil; err = dc.RecvMsg(&msg) {
-		con := SafeConverter{}
-		e := con.entry(msg.Entry)
-		require.NoError(t, con.err)
-		fmt.Println(e.GetKey(), ":", e)
+	asset, err := crypto.NewDigestFromBase58("Gf9t8FA4H3ssoZPCwrg3KwUFCci8zuUFP9ssRsUY3s6a")
+	require.NoError(t, err)
+	a := make([]byte, len(asset.Bytes()))
+	copy(a, asset.Bytes())
+	req := &g.BalancesRequest{
+		Address: b,
+		Assets:  [][]byte{a},
+	}
+	bc, err := c.GetBalances(ctx, req)
+	require.NoError(t, err)
+	var msg g.BalanceResponse
+	for err = bc.RecvMsg(&msg); err == nil; err = bc.RecvMsg(&msg) {
+		br, ok := msg.Balance.(*g.BalanceResponse_Asset)
+		require.True(t, ok)
+		fmt.Printf("%s: %d\n", base58.Encode(br.Asset.AssetId), int(br.Asset.Amount))
 	}
 	assert.Equal(t, io.EOF, err)
 }
 
 func connect(t *testing.T) *grpc.ClientConn {
-	conn, err := grpc.Dial("testnet-aws-fr-1.wavesnodes.com:6870", grpc.WithInsecure())
+	conn, err := grpc.Dial("127.0.0.1:8088", grpc.WithInsecure())
 	require.NoError(t, err)
 	return conn
 }

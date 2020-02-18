@@ -35,6 +35,7 @@ var (
 	// Debug.
 	cpuProfilePath = flag.String("cpuprofile", "", "Write cpu profile to this file.")
 	memProfilePath = flag.String("memprofile", "", "Write memory profile to this file.")
+	checkAssets    = flag.Bool("check-assets", false, "Run assets balances check")
 )
 
 func main() {
@@ -131,6 +132,13 @@ func main() {
 		if err := importer.CheckBalances(st, *balancesPath); err != nil {
 			zap.S().Fatalf("Balances check failed: %v", err)
 		}
+	}
+
+	if *checkAssets {
+		if err := importer.CheckAssetBalances(st); err != nil {
+			zap.S().Fatalf("Assets balances check failed: %v", err)
+		}
+		zap.S().Info("Assets check completed")
 	}
 
 	// Debug.
