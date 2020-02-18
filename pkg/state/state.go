@@ -685,7 +685,6 @@ func (s *stateManager) AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, er
 		return nil, err
 	}
 	zap.S().Info("Checking assets balances...")
-	c := 0
 	diffs := make(map[crypto.Digest]importer.Diff)
 	for a, balance := range balances {
 		info, err := s.stor.assets.assetInfo(a, true)
@@ -693,6 +692,10 @@ func (s *stateManager) AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, er
 			return nil, err
 		}
 		quantity := info.quantity
+		cropped := big.NewInt(quantity.Int64())
+		if quantity.CmpAbs(cropped) != 0 {
+			zap.S().Infof("Quantity overflow: asset '%s', quantity: %s, cropped: %s", a.String(), quantity.String(), cropped.String())
+		}
 		if quantity.CmpAbs(balance) != 0 {
 			d := big.NewInt(0)
 			d.Sub(&quantity, balance)
@@ -702,10 +705,6 @@ func (s *stateManager) AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, er
 				Total:    balance,
 				Diff:     d,
 			}
-		}
-		c++
-		if c%10000 == 0 {
-			zap.S().Infof("%d assets checked", c)
 		}
 	}
 	return diffs, nil
