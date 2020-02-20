@@ -33,9 +33,10 @@ var (
 	writeBufferSize           = flag.Int("write-buffer", 16, "Write buffer size in MiB.")
 	buildDataForExtendedApi   = flag.Bool("build-extended-api", false, "Build and store additional data required for extended API in state. WARNING: this slows down the import, use only if you do really need extended API.")
 	// Debug.
-	cpuProfilePath = flag.String("cpuprofile", "", "Write cpu profile to this file.")
-	memProfilePath = flag.String("memprofile", "", "Write memory profile to this file.")
-	checkAssets    = flag.Bool("check-assets", false, "Run assets balances check")
+	cpuProfilePath      = flag.String("cpuprofile", "", "Write cpu profile to this file.")
+	memProfilePath      = flag.String("memprofile", "", "Write memory profile to this file.")
+	checkAssets         = flag.Bool("check-assets", false, "Run assets balances check")
+	exportAssetBalances = flag.Bool("export-assets-balances", false, "Export all balances of all assets into a file 'export.csv'")
 )
 
 func main() {
@@ -141,6 +142,23 @@ func main() {
 		zap.S().Info("Assets check completed")
 	}
 
+	if *exportAssetBalances {
+		out, err := os.Create("export.csv")
+		if err != nil {
+			zap.S().Fatalf("Failed to create output file 'export.csv': %v", err)
+		}
+		defer func() {
+			err := out.Close()
+			if err != nil {
+				zap.S().Fatalf("Failed to close file: %v", err)
+			}
+		}()
+		zap.S().Info("Exporting assets balances...")
+		if err := importer.ExportAssetsBalances(st, out); err != nil {
+			zap.S().Fatalf("Assets balances export failed: %v", err)
+		}
+		zap.S().Info("Export completed")
+	}
 	// Debug.
 	if *memProfilePath != "" {
 		f, err := os.Create(*memProfilePath)

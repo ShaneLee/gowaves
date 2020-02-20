@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/csv"
 	"math/big"
 	"runtime"
 
@@ -57,6 +58,7 @@ type StateInfo interface {
 	// It is extremely slow, so it is recommended to only use for testing purposes.
 	WavesAddressesNumber() (uint64, error)
 	AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, error)
+	WriteAssetsBalances(w *csv.Writer) error
 	// Get cumulative blocks score at given height.
 	ScoreAtHeight(height proto.Height) (*big.Int, error)
 	// Get current blockchain score (at top height).

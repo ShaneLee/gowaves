@@ -2,6 +2,7 @@ package importer
 
 import (
 	"encoding/binary"
+	"encoding/csv"
 	"encoding/json"
 	"math/big"
 	"os"
@@ -32,11 +33,18 @@ type Diff struct {
 	Diff     *big.Int
 }
 
+type AssetBalance struct {
+	Account proto.Address
+	Asset   crypto.Digest
+	Balance uint64
+}
+
 type State interface {
 	AddNewBlocks(blocks [][]byte) error
 	AddOldBlocks(blocks [][]byte) error
 	WavesAddressesNumber() (uint64, error)
 	AssetBalancesDiffs() (map[crypto.Digest]Diff, error)
+	WriteAssetsBalances(w *csv.Writer) error
 	AccountBalance(account proto.Recipient, asset []byte) (uint64, error)
 }
 
@@ -181,4 +189,10 @@ func CheckAssetBalances(st State) error {
 		zap.S().Infof("Asset error: %s: %d", k.String(), v)
 	}
 	return nil
+}
+
+func ExportAssetsBalances(st State, out *os.File) error {
+	writer := csv.NewWriter(out)
+	defer writer.Flush()
+	return st.WriteAssetsBalances(writer)
 }

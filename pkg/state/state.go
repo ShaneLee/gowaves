@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -708,6 +709,10 @@ func (s *stateManager) AssetBalancesDiffs() (map[crypto.Digest]importer.Diff, er
 		}
 	}
 	return diffs, nil
+}
+
+func (s *stateManager) WriteAssetsBalances(w *csv.Writer) error {
+	return s.stor.balances.writeAssetsBalances(w)
 }
 
 func (s *stateManager) topBlock() (*proto.Block, error) {

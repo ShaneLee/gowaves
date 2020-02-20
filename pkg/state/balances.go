@@ -2,9 +2,11 @@ package state
 
 import (
 	"encoding/binary"
+	"encoding/csv"
 	"encoding/hex"
 	"math"
 	"math/big"
+	"strconv"
 
 	"github.com/wavesplatform/gowaves/pkg/crypto"
 	"github.com/wavesplatform/gowaves/pkg/keyvalue"
@@ -218,6 +220,47 @@ func (s *balances) wavesAddressesNumber() (uint64, error) {
 		}
 	}
 	return addressesNumber, nil
+}
+
+func (s *balances) writeAssetsBalances(w *csv.Writer) error {
+	iter, err := s.db.NewKeyIterator([]byte{assetBalanceKeyPrefix})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		iter.Release()
+		if err := iter.Error(); err != nil {
+			zap.S().Fatalf("Iterator error: %v")
+		}
+	}()
+	count := 0
+	for iter.Next() {
+		var k assetBalanceKey
+		if err := k.unmarshal(iter.Key()); err != nil {
+			zap.S().Errorf("iter key (%s) error: %v", hex.EncodeToString(iter.Key()), err)
+			return err
+		}
+		asset, err := crypto.NewDigestFromBytes(k.asset)
+		if err != nil {
+			return err
+		}
+		recordBytes, err := s.hs.latestEntryData(iter.Key(), true)
+		if err != nil {
+			return err
+		}
+		var record assetBalanceRecord
+		if err := record.unmarshalBinary(recordBytes); err != nil {
+			zap.S().Errorf("iter value (%s) error: %v", hex.EncodeToString(iter.Value()), err)
+			return err
+		}
+		w.Write([]string{k.address.String(), asset.String(), strconv.Itoa(int(record.balance))})
+		count++
+		if count%1000000 == 0 {
+			zap.S().Infof("%dM asset balances processed", count/1000000)
+		}
+	}
+	zap.S().Infof("%d assets collected", count)
+	return nil
 }
 
 func (s *balances) assetsBalances() (map[crypto.Digest]*big.Int, error) {
